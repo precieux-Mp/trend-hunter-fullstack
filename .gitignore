@@ -1,0 +1,32 @@
+﻿# Java / Maven
+target/
+*.class
+
+# Base de données H2 (etat local)
+data/
+*.mv.db
+*.trace.db
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Logs et temporaires
+*.log
+journal.log
+erreur.txt
+
+# Environnement
+.env
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db

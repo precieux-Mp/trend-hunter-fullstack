@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trend Hunter</title>
+  <style>
+    :root {
+      --ink:      #12141c;
+      --surface:  #1b1e29;
+      --line:     #2a2f3f;
+      --text:     #e7e9f0;
+      --muted:    #8a90a6;
+      --signal:   #f2a93b;
+      --signal-2: #4cc9c0;
+      --ok:       #5bd08a;
+      --down:     #e06c6c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--ink); color: var(--text); line-height: 1.5;
+      padding: 2rem 1.25rem 4rem;
+    }
+    .wrap { max-width: 780px; margin: 0 auto; }
+
+    header {
+      display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap;
+      padding-bottom: 1.25rem; border-bottom: 1px solid var(--line);
+    }
+    h1 { font-size: 1.9rem; font-weight: 650; letter-spacing: -0.02em; }
+    h1 span { color: var(--signal); }
+    .count { color: var(--muted); font-size: 0.95rem; }
+    .actions { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem;
+      color: var(--muted); padding: 0.3rem 0.7rem;
+      border: 1px solid var(--line); border-radius: 999px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .dot.ok   { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+    .dot.down { background: var(--down); }
+
+    button.refresh {
+      font: inherit; color: var(--ink); background: var(--signal); border: none;
+      border-radius: 8px; padding: 0.5rem 1rem; font-weight: 600; cursor: pointer;
+      transition: filter 0.15s;
+    }
+    button.refresh:hover { filter: brightness(1.08); }
+    button.refresh:active { transform: translateY(1px); }
+    button:focus-visible { outline: 2px solid var(--signal-2); outline-offset: 2px; }
+
+    /* ---- Onglets ---- */
+    .tabs { display: flex; gap: 0.25rem; margin-top: 1.25rem; border-bottom: 1px solid var(--line); }
+    .tab {
+      font: inherit; font-size: 0.95rem; cursor: pointer;
+      background: transparent; color: var(--muted); border: none;
+      padding: 0.6rem 1rem; border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.actif { color: var(--text); border-bottom-color: var(--signal); font-weight: 600; }
+
+    /* ---- Filtres par catégorie ---- */
+    .filtres { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+    .chip {
+      font: inherit; font-size: 0.85rem; cursor: pointer;
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--line); border-radius: 999px; padding: 0.35rem 0.85rem;
+      transition: all 0.15s;
+    }
+    .chip:hover { color: var(--text); border-color: var(--muted); }
+    .chip.actif { background: var(--text); color: var(--ink); border-color: var(--text); font-weight: 600; }
+
+    /* ---- Liste ---- */
+    .list { margin-top: 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .row {
+      display: grid; grid-template-columns: 2rem 1fr auto; gap: 0.9rem; align-items: center;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 10px; padding: 0.85rem 1rem;
+    }
+    .rank { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+    .sujet { font-weight: 500; }
+    .meta { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.25rem; font-size: 0.8rem; }
+    .cat {
+      padding: 0.05rem 0.5rem; border-radius: 999px;
+      border: 1px solid currentColor; font-size: 0.72rem; font-weight: 600;
+    }
+    .src { color: var(--muted); }
+
+    /* ---- Vue Tendances (score) ---- */
+    .score-box { text-align: right; min-width: 130px; }
+    .score-val {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 1.05rem;
+      color: var(--signal); font-variant-numeric: tabular-nums;
+    }
+    .score-unit { color: var(--muted); font-size: 0.75rem; }
+    .bar { height: 4px; border-radius: 2px; margin-top: 0.4rem;
+           background: linear-gradient(90deg, var(--signal-2), var(--signal)); }
+
+    /* ---- Vue Émergentes (croissance + courbe) ---- */
+    .emerge-box { display: flex; align-items: center; gap: 0.85rem; }
+    .spark { display: block; }
+    .croissance {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 1.05rem;
+      font-variant-numeric: tabular-nums; min-width: 72px; text-align: right;
+    }
+
+    .state {
+      margin-top: 2rem; padding: 2rem; border: 1px dashed var(--line);
+      border-radius: 12px; text-align: center; color: var(--muted);
+    }
+    .state code { color: var(--text); background: var(--surface); padding: 0.1rem 0.4rem; border-radius: 4px; }
+
+    @media (max-width: 480px) {
+      .row { grid-template-columns: 1.5rem 1fr; }
+      .score-box, .emerge-box { grid-column: 2; justify-content: flex-start; text-align: left; min-width: 0; margin-top: 0.5rem; }
+      .bar { max-width: 180px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Trend<span>Hunter</span></h1>
+      <span class="count" id="count"></span>
+      <div class="actions">
+        <span class="pill"><span class="dot" id="health-dot"></span><span id="health-txt">API…</span></span>
+        <button class="refresh" id="refresh">Rafraîchir</button>
+      </div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab actif" data-vue="tendances">Tendances</button>
+      <button class="tab" data-vue="emergentes">Émergentes</button>
+    </div>
+
+    <div class="filtres" id="filtres"></div>
+    <div class="list" id="list"></div>
+    <div class="state" id="state" hidden></div>
+  </div>
+
+  <script>
+    const API = "http://localhost:8080";
+
+    let vueActive = "tendances";   // "tendances" | "emergentes"
+    let toutes = [];               // pour la vue Tendances
+    let filtreActif = "Tout";
+
+    const el = {
+      list:      document.getElementById("list"),
+      state:     document.getElementById("state"),
+      filtres:   document.getElementById("filtres"),
+      count:     document.getElementById("count"),
+      healthDot: document.getElementById("health-dot"),
+      healthTxt: document.getElementById("health-txt"),
+      refresh:   document.getElementById("refresh"),
+    };
+
+    function echapper(s) {
+      const d = document.createElement("div");
+      d.textContent = s ?? "";
+      return d.innerHTML;
+    }
+
+    function formaterDate(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    }
+
+    function couleurCat(cat) {
+      let h = 0;
+      for (const c of cat) h = (h * 31 + c.charCodeAt(0)) % 360;
+      return `hsl(${h} 60% 65%)`;
+    }
+
+    // --- Émergence : couleur et format du pourcentage ---
+    function couleurCroissance(v) {
+      if (v > 0.5)  return "var(--ok)";
+      if (v < -0.5) return "var(--down)";
+      return "var(--muted)";
+    }
+    function formaterCroissance(v) {
+      const signe = v > 0 ? "+" : "";
+      return `${signe}${Math.round(v)} %`;
+    }
+
+    // --- Mini-courbe (sparkline) à partir de l'historique ---
+    function sparkline(historique, largeur = 90, hauteur = 28) {
+      if (!historique || historique.length < 2) return "";
+      const min = Math.min(...historique);
+      const max = Math.max(...historique);
+      const plage = (max - min) || 1;
+      const pas = largeur / (historique.length - 1);
+      const points = historique.map((v, i) => {
+        const x = i * pas;
+        const y = hauteur - ((v - min) / plage) * hauteur;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(" ");
+      return `<svg class="spark" width="${largeur}" height="${hauteur}" viewBox="0 0 ${largeur} ${hauteur}">
+        <polyline points="${points}" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linejoin="round" stroke-linecap="round"/>
+      </svg>`;
+    }
+
+    function afficherEtat(message) {
+      el.filtres.innerHTML = "";
+      el.list.innerHTML = "";
+      el.count.textContent = "";
+      el.state.hidden = false;
+      el.state.innerHTML = message;
+    }
+
+    async function verifierSante() {
+      try {
+        const r = await fetch(`${API}/api/health`);
+        const s = await r.json();
+        const enMarche = s.etat_sante === "EN_MARCHE";
+        el.healthDot.className = "dot " + (enMarche ? "ok" : "down");
+        el.healthTxt.textContent = `${s.nom_application} · ${s.etat_sante}`;
+      } catch {
+        el.healthDot.className = "dot down";
+        el.healthTxt.textContent = "API injoignable";
+      }
+    }
+
+    // ====================== VUE TENDANCES ======================
+    async function chargerTendances() {
+      el.filtres.style.display = "flex";
+      try {
+        const r = await fetch(`${API}/api/tendances`);
+        toutes = await r.json();
+
+        if (!toutes.length) {
+          afficherEtat("Aucune tendance en base. Lance le scraper, puis rafraîchis.");
+          return;
+        }
+        el.state.hidden = true;
+        construireFiltres();
+        rendreTendances();
+      } catch {
+        afficherEtat(`Impossible de joindre l'API sur <code>${API}</code>. Le backend est-il démarré ?`);
+      }
+    }
+
+    function construireFiltres() {
+      const cats = ["Tout", ...new Set(toutes.map(t => t.categorie))];
+      if (!cats.includes(filtreActif)) filtreActif = "Tout";
+
+      el.filtres.innerHTML = cats.map(c =>
+        `<button class="chip ${c === filtreActif ? "actif" : ""}" data-cat="${echapper(c)}">${echapper(c)}</button>`
+      ).join("");
+
+      el.filtres.querySelectorAll(".chip").forEach(chip =>
+        chip.addEventListener("click", () => {
+          filtreActif = chip.dataset.cat;
+          construireFiltres();
+          rendreTendances();
+        })
+      );
+    }
+
+    function rendreTendances() {
+      let liste = filtreActif === "Tout"
+        ? toutes
+        : toutes.filter(t => t.categorie === filtreActif);
+
+      liste = [...liste].sort((a, b) => b.scorePopularite - a.scorePopularite);
+      el.count.textContent = `${liste.length} tendances`;
+      const max = liste.length ? (liste[0].scorePopularite || 1) : 1;
+
+      el.list.innerHTML = liste.map((t, i) => {
+        const couleur = couleurCat(t.categorie);
+        return `
+          <div class="row">
+            <div class="rank">${i + 1}</div>
+            <div>
+              <div class="sujet">${echapper(t.sujet)}</div>
+              <div class="meta">
+                <span class="cat" style="color:${couleur}">${echapper(t.categorie)}</span>
+                <span class="src">${echapper(t.source)}</span>
+                <span class="src">${formaterDate(t.dateReleve)}</span>
+              </div>
+            </div>
+            <div class="score-box">
+              <span class="score-val">${Math.round(t.scorePopularite)}</span>
+              <span class="score-unit">pts</span>
+              <div class="bar" style="width:${Math.max(8, (t.scorePopularite / max) * 100)}%"></div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    // ====================== VUE ÉMERGENTES ======================
+    async function chargerEmergentes() {
+      el.filtres.style.display = "none";   // pas de filtre catégorie ici
+      el.filtres.innerHTML = "";
+      try {
+        const r = await fetch(`${API}/api/tendances/emergentes`);
+        const emergentes = await r.json();
+
+        if (!emergentes.length) {
+          afficherEtat("Aucune tendance émergente pour l'instant. Il faut au moins 2 mesures d'un même sujet — laisse le scraper tourner quelques jours.");
+          return;
+        }
+        el.state.hidden = true;
+        el.count.textContent = `${emergentes.length} sujets suivis`;
+
+        el.list.innerHTML = emergentes.map((t, i) => {
+          const couleurC = couleurCroissance(t.croissancePourcent);
+          const couleurCategorie = couleurCat(t.categorie);
+          return `
+            <div class="row">
+              <div class="rank">${i + 1}</div>
+              <div>
+                <div class="sujet">${echapper(t.sujet)}</div>
+                <div class="meta">
+                  <span class="cat" style="color:${couleurCategorie}">${echapper(t.categorie)}</span>
+                  <span class="src">${echapper(t.source)}</span>
+                </div>
+              </div>
+              <div class="emerge-box" style="color:${couleurC}">
+                ${sparkline(t.historique)}
+                <span class="croissance">${formaterCroissance(t.croissancePourcent)}</span>
+              </div>
+            </div>`;
+        }).join("");
+      } catch {
+        afficherEtat(`Impossible de joindre l'API sur <code>${API}</code>. Le backend est-il démarré ?`);
+      }
+    }
+
+    // ====================== ONGLETS + RAFRAÎCHISSEMENT ======================
+        async function rafraichir() {
+      el.refresh.disabled = true;
+      el.refresh.textContent = "Chargement…";
+      try {
+        await verifierSante();
+        if (vueActive === "tendances") await chargerTendances();
+        else await chargerEmergentes();
+      } finally {
+        el.refresh.disabled = false;
+        el.refresh.textContent = "Rafraîchir";
+      }
+    }
+    document.querySelectorAll(".tab").forEach(tab =>
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("actif"));
+        tab.classList.add("actif");
+        vueActive = tab.dataset.vue;
+        rafraichir();
+      })
+    );
+
+    el.refresh.addEventListener("click", rafraichir);
+    rafraichir();
+  </script>
+</body>
+</html>
