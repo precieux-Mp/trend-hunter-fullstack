@@ -11,12 +11,10 @@ print("Attente du backend (20s)...")
 time.sleep(20)
 
 # 3. Scraper
-scraper = os.path.join(BASE, "src", "main", "java", "com", "trendhunter",
-                       "trend_hunter_recolteur", "trend_scraper.py")
+scraper = os.path.join(BASE, "recolteur", "trend_scraper.py")
 subprocess.Popen(f'python "{scraper}"', shell=True,
                  creationflags=subprocess.CREATE_NEW_CONSOLE)
 
 # 4. Frontend
-index = os.path.join(BASE, "src", "main", "java", "com", "trendhunter",
-                     "trend_hunter_frontend", "index.html")
+index   = os.path.join(BASE, "frontend", "index.html")
 webbrowser.open(index)
