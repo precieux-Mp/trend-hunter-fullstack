@@ -1,0 +1,17 @@
+﻿services:
+
+  # --- Le backend Spring Boot ---
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+
+  # --- Le scraper Python ---
+  scraper:
+    build: ./recolteur
+    environment:
+      - BACKEND_URL=http://backend:8080/api/tendances
+    depends_on:
+      - backend

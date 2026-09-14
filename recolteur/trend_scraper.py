@@ -1,9 +1,10 @@
+﻿import os
 """
-trend_scraper.py — récupère des tendances depuis plusieurs sources
+trend_scraper.py â€” rÃ©cupÃ¨re des tendances depuis plusieurs sources
 (Hacker News, Dev.to, Reddit, Google Trends) et les envoie au backend
-Spring Boot (POST /api/tendances), avec une catégorie pour chacune.
+Spring Boot (POST /api/tendances), avec une catÃ©gorie pour chacune.
 
-Dépendances :
+DÃ©pendances :
     pip install requests pytrends
 
 Lancer :
@@ -16,18 +17,18 @@ from pytrends.request import TrendReq
 
 # --- Configuration ---------------------------------------------------------
 
-BACKEND_URL = "http://localhost:8080/api/tendances"
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8080/api/tendances")
 HEADERS = {"User-Agent": "trend-hunter/1.0 (projet etudiant UNIMORE)"}
 
 
 # ==========================================================================
 #  UNE FONCTION PAR SOURCE.
-#  Chacune renvoie une liste de dictionnaires au MÊME format :
+#  Chacune renvoie une liste de dictionnaires au MÃŠME format :
 #  { "sujet", "scorePopularite", "source", "categorie" }
 # ==========================================================================
 
 def source_hacker_news(limite=8):
-    """Hacker News : catégorie fixée à 'Tech'."""
+    """Hacker News : catÃ©gorie fixÃ©e Ã  'Tech'."""
     top  = "https://hacker-news.firebaseio.com/v0/topstories.json"
     item = "https://hacker-news.firebaseio.com/v0/item/{}.json"
 
@@ -46,7 +47,7 @@ def source_hacker_news(limite=8):
 
 
 def source_devto(limite=8):
-    """Dev.to : la catégorie vient du 1er tag de l'article."""
+    """Dev.to : la catÃ©gorie vient du 1er tag de l'article."""
     url = f"https://dev.to/api/articles?top=1&per_page={limite}"
     articles = requests.get(url, headers=HEADERS, timeout=10).json()
 
@@ -63,17 +64,17 @@ def source_devto(limite=8):
     return tendances
 
 
-# Reddit : chaque subreddit est associé à une catégorie.
+# Reddit : chaque subreddit est associÃ© Ã  une catÃ©gorie.
 SUBREDDITS = {
     "technology": "Tech",
     "science":    "Science",
-    "worldnews":  "Actualité",
-    "gaming":     "Jeux vidéo",
-    "movies":     "Cinéma",
+    "worldnews":  "ActualitÃ©",
+    "gaming":     "Jeux vidÃ©o",
+    "movies":     "CinÃ©ma",
 }
 
 def source_reddit(par_subreddit=4):
-    """Reddit : la catégorie vient du subreddit d'origine."""
+    """Reddit : la catÃ©gorie vient du subreddit d'origine."""
     tendances = []
     for sub, categorie in SUBREDDITS.items():
         try:
@@ -88,33 +89,33 @@ def source_reddit(par_subreddit=4):
                     "categorie":       categorie,
                 })
         except Exception as e:
-            print(f"  [Reddit/{sub}] ignoré : {e}")
+            print(f"  [Reddit/{sub}] ignorÃ© : {e}")
     return tendances
 
 
 # Google Trends : liste de SUJETS SUIVIS (persistants dans le temps).
-# C'est la source clé pour détecter l'émergence : on remesure les mêmes
-# sujets jour après jour. Modifie cette liste quand tu veux.
+# C'est la source clÃ© pour dÃ©tecter l'Ã©mergence : on remesure les mÃªmes
+# sujets jour aprÃ¨s jour. Modifie cette liste quand tu veux.
 SUJETS_GOOGLE = {
     "intelligence artificielle":            "Tech",
-    "voiture électrique":                   "Automobile",
-    "énergie solaire":                      "Énergie",
-    "cybersécurité":                        "Tech",
+    "voiture Ã©lectrique":                   "Automobile",
+    "Ã©nergie solaire":                      "Ã‰nergie",
+    "cybersÃ©curitÃ©":                        "Tech",
     "bitcoin":                              "Crypto",
-    "Ozempic":                              "Santé",
-    "intelligence artificielle générative": "Tech",
-    "panneaux solaires":                    "Énergie",
-    "télétravail":                          "Société",
+    "Ozempic":                              "SantÃ©",
+    "intelligence artificielle gÃ©nÃ©rative": "Tech",
+    "panneaux solaires":                    "Ã‰nergie",
+    "tÃ©lÃ©travail":                          "SociÃ©tÃ©",
     "ChatGPT":                              "Tech",
 }
 
 def source_google_trends():
-    """Google Trends : intérêt de recherche actuel (0-100) de chaque sujet suivi."""
+    """Google Trends : intÃ©rÃªt de recherche actuel (0-100) de chaque sujet suivi."""
     pytrends = TrendReq(hl="fr-FR", tz=60)   # langue FR, fuseau Europe
     sujets = list(SUJETS_GOOGLE.keys())
     tendances = []
 
-    # Google Trends accepte 5 mots-clés max par requête -> paquets de 5
+    # Google Trends accepte 5 mots-clÃ©s max par requÃªte -> paquets de 5
     for i in range(0, len(sujets), 5):
         paquet = sujets[i:i + 5]
         try:
@@ -124,21 +125,21 @@ def source_google_trends():
                 continue
             for sujet in paquet:
                 if sujet in donnees.columns:
-                    score = float(donnees[sujet].iloc[-1])  # valeur la plus récente
+                    score = float(donnees[sujet].iloc[-1])  # valeur la plus rÃ©cente
                     tendances.append({
                         "sujet":           sujet,
                         "scorePopularite": score,
                         "source":          "Google Trends",
                         "categorie":       SUJETS_GOOGLE[sujet],
                     })
-            time.sleep(1)   # pause pour éviter d'être bloqué
+            time.sleep(1)   # pause pour Ã©viter d'Ãªtre bloquÃ©
         except Exception as e:
-            print(f"  [Google Trends] paquet {paquet} ignoré : {e}")
+            print(f"  [Google Trends] paquet {paquet} ignorÃ© : {e}")
 
     return tendances
 
 
-# La liste des sources à interroger.
+# La liste des sources Ã  interroger.
 # Pour tester Google Trends seul : SOURCES = [source_google_trends]
 SOURCES = [source_hacker_news, source_devto, source_reddit, source_google_trends]
 
@@ -154,20 +155,20 @@ def envoyer(tendance):
 
 
 def main():
-    # 1. Récupération depuis toutes les sources (une source qui plante
+    # 1. RÃ©cupÃ©ration depuis toutes les sources (une source qui plante
     #    ne bloque pas les autres).
     toutes = []
     for source in SOURCES:
         nom = source.__name__
         try:
             resultats = source()
-            print(f"[{nom}] {len(resultats)} tendances récupérées")
+            print(f"[{nom}] {len(resultats)} tendances rÃ©cupÃ©rÃ©es")
             toutes.extend(resultats)
         except Exception as e:
-            print(f"[{nom}] ÉCHEC : {e}")
+            print(f"[{nom}] Ã‰CHEC : {e}")
 
     if not toutes:
-        print("\nAucune tendance récupérée.")
+        print("\nAucune tendance rÃ©cupÃ©rÃ©e.")
         return
 
     # 2. Envoi au backend.
@@ -179,13 +180,14 @@ def main():
             envoyees += 1
         except requests.exceptions.ConnectionError:
             print("ERREUR : backend injoignable sur http://localhost:8080 "
-                  "(est-il démarré ?)")
+                  "(est-il dÃ©marrÃ© ?)")
             break
         except requests.exceptions.HTTPError as e:
             print(f"ERREUR HTTP : {e}")
 
-    print(f"\n{envoyees} tendances enregistrées en base.")
+    print(f"\n{envoyees} tendances enregistrÃ©es en base.")
 
 
 if __name__ == "__main__":
     main()
+
